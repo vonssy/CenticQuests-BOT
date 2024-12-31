@@ -1,7 +1,7 @@
 # Centic Quests BOT
 Centic Quests BOT
 
-Download Extension Here : [Centic Quests](https://centic.io/quests/daily?refferalCode=eJwFwQERACAIBLBKwINCHPDeDMZ3k0ec4q1GsTgSaYxR32LrNMMcyDDtDwSCC20=)
+Register Here : [Centic Quests](https://centic.io/quests/daily?refferalCode=eJwFwQERACAIBLBKwINCHPDeDMZ3k0ec4q1GsTgSaYxR32LrNMMcyDDtDwSCC20=)
 
 ## Fitur
 

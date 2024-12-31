@@ -230,7 +230,7 @@ class Centic:
                         self.log(f"{Fore.CYAN + Style.BRIGHT}-{Style.RESET_ALL}"*75)
                         await asyncio.sleep(3)     
 
-                seconds = 1800
+                seconds = 28800
                 while seconds > 0:
                     formatted_time = self.format_seconds(seconds)
                     print(

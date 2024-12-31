@@ -37,6 +37,8 @@ Pastikan Anda telah menginstal Python3.9 dan PIP.
     your_apikey_2
   ```
 
+## Screenshots
+
 <div style="text-align: center;">
   <h4><strong>Api Key</strong></h4>
   <img src="image.png" alt="Api Key" width="500"/>

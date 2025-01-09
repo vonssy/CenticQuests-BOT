@@ -3,10 +3,12 @@ from aiohttp import (
     ClientSession,
     ClientTimeout
 )
-from colorama import *
-from datetime import datetime
+from eth_account import Account
+from eth_account.messages import encode_defunct
 from fake_useragent import FakeUserAgent
-import asyncio, json, os, pytz
+from datetime import datetime
+from colorama import *
+import asyncio, random, json, os, pytz
 
 wib = pytz.timezone('Asia/Jakarta')
 
@@ -22,6 +24,7 @@ class Centic:
             'Sec-Fetch-Site': 'same-site',
             'User-Agent': FakeUserAgent().random
         }
+        self.code = 'eJwFwQERACAIBLBKwINCHPDeDMZ3k0ec4q1GsTgSaYxR32LrNMMcyDDtDwSCC20='
 
     def clear_terminal(self):
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -48,13 +51,84 @@ class Centic:
         minutes, seconds = divmod(remainder, 60)
         return f"{int(hours):02}:{int(minutes):02}:{int(seconds):02}"
     
-    def hide_apikey(self, apikey):
-        hide_apikey = apikey[:3] + '*' * 3 + apikey[-3:]
-        return hide_apikey
+    def generate_nonce(self):
+        return random.randint(10000, 999999)
+
+    def generate_payload(self, account: str, nonce: str):
+        try:
+            local_account = Account.from_key(account)
+            address = local_account.address
+
+            message = f"I am signing my one-time nonce: {nonce}.\n\nNote: Sign to log into your Centic account. This is free and will not require a transaction."
+            encoded_message = encode_defunct(text=message)
+
+            signed_message = Account.sign_message(encoded_message, private_key=account)
+            signature = signed_message.signature.hex()
+
+            return address, signature
+        except Exception as e:
+            return None, None
     
-    def hide_id(self, id):
-        hide_id = id[:3] + '*' * 3 + id[-3:]
-        return hide_id
+    def hide_account(self, account):
+        hide_account = account[:3] + '*' * 3 + account[-3:]
+        return hide_account
+    
+    async def user_login(self, address: str, nonce: int, signature: str, retries=5):
+        url = 'https://develop.centic.io/dev/v3/auth/login'
+        data = json.dumps({'address':address, 'nonce':nonce, 'signature':signature})
+        headers = {
+            **self.headers,
+            'Content-Length': str(len(data)),
+            'Content-Type': 'application/json',
+            'X-Apikey': 'dXoriON31OO1UopGakYO9f3tX2c4q3oO7mNsjB2nJsKnW406'
+        }
+        for attempt in range(retries):
+            try:
+                async with ClientSession(timeout=ClientTimeout(total=20)) as session:
+                    async with session.post(url=url, headers=headers, data=data) as response:
+                        response.raise_for_status()
+                        result = await response.json()
+                        return result['apiKey']
+            except (Exception, ClientResponseError) as e:
+                if attempt < retries - 1:
+                    print(
+                        f"{Fore.RED + Style.BRIGHT}ERROR.{Style.RESET_ALL}"
+                        f"{Fore.YELLOW + Style.BRIGHT} Retrying.... {Style.RESET_ALL}"
+                        f"{Fore.WHITE + Style.BRIGHT}[{attempt+1}/{retries}]{Style.RESET_ALL}",
+                        end="\r",
+                        flush=True
+                    )
+                    await asyncio.sleep(3)
+                else:
+                    return None
+        
+    async def user_confirm(self, apikey: str, retries=5):
+        url = 'https://develop.centic.io/ctp-api/centic-points/invites'
+        data = json.dumps({'referralCode':self.code})
+        headers = {
+            **self.headers,
+            'Content-Length': str(len(data)),
+            'Content-Type': 'application/json',
+            'X-Apikey': apikey
+        }
+        for attempt in range(retries):
+            try:
+                async with ClientSession(timeout=ClientTimeout(total=20)) as session:
+                    async with session.post(url=url, headers=headers, data=data) as response:
+                        response.raise_for_status()
+                        return await response.json()
+            except (Exception, ClientResponseError) as e:
+                if attempt < retries - 1:
+                    print(
+                        f"{Fore.RED + Style.BRIGHT}ERROR.{Style.RESET_ALL}"
+                        f"{Fore.YELLOW + Style.BRIGHT} Retrying.... {Style.RESET_ALL}"
+                        f"{Fore.WHITE + Style.BRIGHT}[{attempt+1}/{retries}]{Style.RESET_ALL}",
+                        end="\r",
+                        flush=True
+                    )
+                    await asyncio.sleep(3)
+                else:
+                    return None
     
     async def user_info(self, apikey: str, retries=5):
         url = 'https://develop.centic.io/ctp-api/centic-points/user-info'
@@ -73,7 +147,7 @@ class Centic:
                 if attempt < retries - 1:
                     print(
                         f"{Fore.RED + Style.BRIGHT}ERROR.{Style.RESET_ALL}"
-                        f"{Fore.YELLOW + Style.BRIGHT} Retrying... {Style.RESET_ALL}"
+                        f"{Fore.YELLOW + Style.BRIGHT} Retrying.... {Style.RESET_ALL}"
                         f"{Fore.WHITE + Style.BRIGHT}[{attempt+1}/{retries}]{Style.RESET_ALL}",
                         end="\r",
                         flush=True
@@ -99,7 +173,7 @@ class Centic:
                 if attempt < retries - 1:
                     print(
                         f"{Fore.RED + Style.BRIGHT}ERROR.{Style.RESET_ALL}"
-                        f"{Fore.YELLOW + Style.BRIGHT} Retrying... {Style.RESET_ALL}"
+                        f"{Fore.YELLOW + Style.BRIGHT} Retrying.... {Style.RESET_ALL}"
                         f"{Fore.WHITE + Style.BRIGHT}[{attempt+1}/{retries}]{Style.RESET_ALL}",
                         end="\r",
                         flush=True
@@ -130,7 +204,7 @@ class Centic:
                 if attempt < retries - 1:
                     print(
                         f"{Fore.RED + Style.BRIGHT}ERROR.{Style.RESET_ALL}"
-                        f"{Fore.YELLOW + Style.BRIGHT} Retrying... {Style.RESET_ALL}"
+                        f"{Fore.YELLOW + Style.BRIGHT} Retrying.... {Style.RESET_ALL}"
                         f"{Fore.WHITE + Style.BRIGHT}[{attempt+1}/{retries}]{Style.RESET_ALL}",
                         end="\r",
                         flush=True
@@ -139,97 +213,120 @@ class Centic:
                 else:
                     return None
                 
-    async def process_accounts(self, apikey: str):
-        user = await self.user_info(apikey)
-        if not user:
+    async def process_accounts(self, account: str):
+        nonce = self.generate_nonce()
+
+        address, signature = self.generate_payload(account, nonce)
+        if not address or not signature:
             self.log(
                 f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                f"{Fore.WHITE + Style.BRIGHT} {self.hide_apikey(apikey)} {Style.RESET_ALL}"
-                f"{Fore.RED + Style.BRIGHT}Data Is None{Style.RESET_ALL}"
+                f"{Fore.WHITE + Style.BRIGHT} {self.hide_account(account)} {Style.RESET_ALL}"
+                f"{Fore.RED + Style.BRIGHT}Failed to Generate Payload{Style.RESET_ALL}"
                 f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
             )
             return
         
-        if user:
+        apikey = await self.user_login(address, nonce, signature)
+        if not apikey:
             self.log(
                 f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
-                f"{Fore.WHITE + Style.BRIGHT} {self.hide_id(user['_id'])} {Style.RESET_ALL}"
+                f"{Fore.WHITE + Style.BRIGHT} {self.hide_account(account)} {Style.RESET_ALL}"
+                f"{Fore.RED + Style.BRIGHT}Failed to GET Apikey{Style.RESET_ALL}"
+                f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
+            )
+            return
+        
+        await self.user_confirm(apikey)
+
+        user = await self.user_info(apikey)
+        if user:
+            balance = user.get('totalPoint', 0)
+            self.log(
+                f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
+                f"{Fore.WHITE + Style.BRIGHT} {self.hide_account(address)} {Style.RESET_ALL}"
                 f"{Fore.MAGENTA + Style.BRIGHT}] [ Balance{Style.RESET_ALL}"
-                f"{Fore.WHITE + Style.BRIGHT} {user['totalPoint']} CTP {Style.RESET_ALL}"
+                f"{Fore.WHITE + Style.BRIGHT} {balance} CTP {Style.RESET_ALL}"
                 f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
             )
-            await asyncio.sleep(1)
+        else:
+            self.log(
+                f"{Fore.MAGENTA + Style.BRIGHT}[ Account{Style.RESET_ALL}"
+                f"{Fore.WHITE + Style.BRIGHT} {self.hide_account(address)} {Style.RESET_ALL}"
+                f"{Fore.RED + Style.BRIGHT}Data Is None{Style.RESET_ALL}"
+                f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
+            )
+        await asyncio.sleep(1)
 
-            tasks = await self.user_tasks(apikey)
-            if tasks:
-                all_tasks = []
-        
-                for key, value in tasks.items():
-                    if isinstance(value, list):
-                        all_tasks.extend(value)
-                    elif isinstance(value, dict):
-                        all_tasks.append(value)
+        tasks = await self.user_tasks(apikey)
+        if tasks:
+            all_tasks = []
+    
+            for key, value in tasks.items():
+                if isinstance(value, list):
+                    all_tasks.extend(value)
+                elif isinstance(value, dict):
+                    all_tasks.append(value)
 
-                completed = False
-                for task in all_tasks:
-                    task_id = task['_id']
-                    point = task['point']
-                    claimed = task.get('claimed', None)
+            completed = False
+            for task in all_tasks:
+                task_id = task['_id']
+                point = task['point']
+                claimed = task.get('claimed', None)
 
-                    if task and claimed is None:
-                        claim = await self.claim_tasks(apikey, task_id, point)
-                        if claim and claim['message'] == 'successfully':
-                            self.log(
-                                f"{Fore.MAGENTA + Style.BRIGHT}[ Task{Style.RESET_ALL}"
-                                f"{Fore.WHITE + Style.BRIGHT} {task['name']} {Style.RESET_ALL}"
-                                f"{Fore.GREEN + Style.BRIGHT}Is Claimed{Style.RESET_ALL}"
-                                f"{Fore.MAGENTA + Style.BRIGHT} ] [ Reward{Style.RESET_ALL}"
-                                f"{Fore.WHITE + Style.BRIGHT} {point} CTP {Style.RESET_ALL}"
-                                f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
-                            )
-                        else:
-                            self.log(
-                                f"{Fore.MAGENTA + Style.BRIGHT}[ Task{Style.RESET_ALL}"
-                                f"{Fore.WHITE + Style.BRIGHT} {task['name']} {Style.RESET_ALL}"
-                                f"{Fore.RED + Style.BRIGHT}Isn't Claimed{Style.RESET_ALL}"
-                                f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
-                            )
-                        await asyncio.sleep(1)
-
+                if task and claimed is None:
+                    claim = await self.claim_tasks(apikey, task_id, point)
+                    if claim and claim['message'] == 'successfully':
+                        self.log(
+                            f"{Fore.MAGENTA + Style.BRIGHT}[ Task{Style.RESET_ALL}"
+                            f"{Fore.WHITE + Style.BRIGHT} {task['name']} {Style.RESET_ALL}"
+                            f"{Fore.GREEN + Style.BRIGHT}Is Claimed{Style.RESET_ALL}"
+                            f"{Fore.MAGENTA + Style.BRIGHT} ] [ Reward{Style.RESET_ALL}"
+                            f"{Fore.WHITE + Style.BRIGHT} {point} CTP {Style.RESET_ALL}"
+                            f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
+                        )
                     else:
-                        completed = True
+                        self.log(
+                            f"{Fore.MAGENTA + Style.BRIGHT}[ Task{Style.RESET_ALL}"
+                            f"{Fore.WHITE + Style.BRIGHT} {task['name']} {Style.RESET_ALL}"
+                            f"{Fore.RED + Style.BRIGHT}Isn't Claimed{Style.RESET_ALL}"
+                            f"{Fore.MAGENTA + Style.BRIGHT} ]{Style.RESET_ALL}"
+                        )
+                    await asyncio.sleep(1)
 
-                if completed:
-                    self.log(
-                        f"{Fore.MAGENTA + Style.BRIGHT}[ Task{Style.RESET_ALL}"
-                        f"{Fore.GREEN + Style.BRIGHT} Is Completed {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
-                    )
-            else:
+                else:
+                    completed = True
+
+            if completed:
                 self.log(
                     f"{Fore.MAGENTA + Style.BRIGHT}[ Task{Style.RESET_ALL}"
-                    f"{Fore.RED + Style.BRIGHT} Data Is None {Style.RESET_ALL}"
+                    f"{Fore.GREEN + Style.BRIGHT} Is Completed {Style.RESET_ALL}"
                     f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
                 )
+        else:
+            self.log(
+                f"{Fore.MAGENTA + Style.BRIGHT}[ Task{Style.RESET_ALL}"
+                f"{Fore.RED + Style.BRIGHT} Data Is None {Style.RESET_ALL}"
+                f"{Fore.MAGENTA + Style.BRIGHT}]{Style.RESET_ALL}"
+            )
 
     async def main(self):
         try:
-            with open('apikeys.txt', 'r') as file:
-                apikeys = [line.strip() for line in file if line.strip()]
+            with open('accounts.txt', 'r') as file:
+                accounts = [line.strip() for line in file if line.strip()]
 
             while True:
                 self.clear_terminal()
                 self.welcome()
                 self.log(
                     f"{Fore.GREEN + Style.BRIGHT}Account's Total: {Style.RESET_ALL}"
-                    f"{Fore.WHITE + Style.BRIGHT}{len(apikeys)}{Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT}{len(accounts)}{Style.RESET_ALL}"
                 )
                 self.log(f"{Fore.CYAN + Style.BRIGHT}-{Style.RESET_ALL}"*75)
 
-                for apikey in apikeys:
-                    apikey = apikey.strip()
-                    if apikey:
-                        await self.process_accounts(apikey)
+                for account in accounts:
+                    account = account.strip()
+                    if account:
+                        await self.process_accounts(account)
                         self.log(f"{Fore.CYAN + Style.BRIGHT}-{Style.RESET_ALL}"*75)
                         await asyncio.sleep(3)     
 

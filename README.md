@@ -7,8 +7,8 @@ Register Here : [Centic Quests](https://centic.io/quests/daily?refferalCode=eJwF
 
   - Auto Get Account Information
   - Auto Complete Quests
-  - Multi Accounts With Threads
-
+  - Multi Accounts
+  
 ## Prasyarat
 
 Pastikan Anda telah menginstal Python3.9 dan PIP.
@@ -30,19 +30,12 @@ Pastikan Anda telah menginstal Python3.9 dan PIP.
 
 ## Konfigurasi
 
-- **apikeys.txt:** Anda akan menemukan file `apikeys.txt` di dalam direktori proyek. Pastikan `apikeys.txt` berisi data yang sesuai dengan format yang diharapkan oleh skrip. Berikut adalah contoh format file:
+- **accounts.txt:** Anda akan menemukan file `accounts.txt` di dalam direktori proyek. Pastikan `accounts.txt` berisi data yang sesuai dengan format yang diharapkan oleh skrip. Berikut adalah contoh format file:
 
   ```bash
-    your_apikey_1
-    your_apikey_2
+    your_private_key_1
+    your_private_key_2
   ```
-
-## Screenshots
-
-<div style="text-align: center;">
-  <h4><strong>Api Key</strong></h4>
-  <img src="image.png" alt="Api Key" width="500"/>
-</div>
 
 ## Jalankan
 

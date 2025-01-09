@@ -121,6 +121,9 @@ class Centic:
             try:
                 async with ClientSession(timeout=ClientTimeout(total=20)) as session:
                     async with session.post(url=url, headers=headers, data=data) as response:
+                        if response.status == 400:
+                            return None
+                        
                         response.raise_for_status()
                         return await response.json()
             except (Exception, ClientResponseError) as e:
@@ -230,7 +233,7 @@ class Centic:
                         self.log(f"{Fore.CYAN + Style.BRIGHT}-{Style.RESET_ALL}"*75)
                         await asyncio.sleep(3)     
 
-                seconds = 28800
+                seconds = 86400
                 while seconds > 0:
                     formatted_time = self.format_seconds(seconds)
                     print(

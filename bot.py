@@ -330,7 +330,7 @@ class Centic:
                         self.log(f"{Fore.CYAN + Style.BRIGHT}-{Style.RESET_ALL}"*75)
                         await asyncio.sleep(3)     
 
-                seconds = 86400
+                seconds = 12 * 60 * 60
                 while seconds > 0:
                     formatted_time = self.format_seconds(seconds)
                     print(
@@ -343,7 +343,7 @@ class Centic:
                     seconds -= 1
 
         except FileNotFoundError:
-            self.log(f"{Fore.RED}File 'query.txt' tidak ditemukan.{Style.RESET_ALL}")
+            self.log(f"{Fore.RED}File 'accounts.txt' tidak ditemukan.{Style.RESET_ALL}")
             return
         except Exception as e:
             self.log(f"{Fore.RED+Style.BRIGHT}Error: {e}{Style.RESET_ALL}")

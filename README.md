@@ -6,6 +6,10 @@ Register Here : [Centic Quests](https://centic.io/quests/daily?refferalCode=eJwF
 ## Features
 
   - Auto Get Account Information
+  - Auto Run With [Monosans](https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/all.txt) Proxy - `Choose 1`
+  - Auto Run With Private Proxy - `Choose 2`
+  - Auto Run Without Proxy - `Choose 3`
+  - Auto Rotate Invalid Proxies - `y` or `n`
   - Auto Complete Quests
   - Multi Accounts
   
@@ -35,6 +39,12 @@ Register Here : [Centic Quests](https://centic.io/quests/daily?refferalCode=eJwF
   ```bash
     your_private_key_1
     your_private_key_2
+  ```
+- **proxy.txt:** You will find the file `proxy.txt` inside the project directory. Make sure `proxy.txt` contains data that matches the format expected by the script. Here are examples of file formats:
+  ```bash
+    ip:port # Default Protcol HTTP.
+    protocol://ip:port
+    protocol://user:pass@ip:port
   ```
 
 ## Run

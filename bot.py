@@ -28,10 +28,12 @@ class Centic:
         }
         
         self.BASE_API = "https://develop.centic.io"
+        self.API_KEY = "dXoriON31OO1UopGakYO9f3tX2c4q3oO7mNsjB2nJsKnW406"
         self.ref_code = "eJwFwQERACAIBLBKwINCHPDeDMZ3k0ec4q1GsTgSaYxR32LrNMMcyDDtDwSCC20=" # U can change it with yours.
         self.proxies = []
         self.proxy_index = 0
         self.account_proxies = {}
+        self.api_keys = {}
 
     def clear_terminal(self):
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -63,18 +65,18 @@ class Centic:
         try:
             if use_proxy_choice == 1:
                 async with ClientSession(timeout=ClientTimeout(total=30)) as session:
-                    async with session.get("https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/all.txt") as response:
+                    async with session.get("https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocolipport&format=text") as response:
                         response.raise_for_status()
                         content = await response.text()
                         with open(filename, 'w') as f:
                             f.write(content)
-                        self.proxies = content.splitlines()
+                        self.proxies = [line.strip() for line in content.splitlines() if line.strip()]
             else:
                 if not os.path.exists(filename):
                     self.log(f"{Fore.RED + Style.BRIGHT}File {filename} Not Found.{Style.RESET_ALL}")
                     return
                 with open(filename, 'r') as f:
-                    self.proxies = f.read().splitlines()
+                    self.proxies = [line.strip() for line in f.read().splitlines() if line.strip()]
             
             if not self.proxies:
                 self.log(f"{Fore.RED + Style.BRIGHT}No Proxies Found.{Style.RESET_ALL}")
@@ -119,7 +121,7 @@ class Centic:
 
             return address
         except Exception as e:
-            return None, None
+            return None
         
     def generate_payload(self, account: str, address: str):
         try:
@@ -139,27 +141,30 @@ class Centic:
 
             return payload
         except Exception as e:
-            return None
+            raise Exception(f"Generate Req Payload Failed: {str(e)}")
     
     def mask_account(self, account):
-        mask_account = account[:6] + '*' * 6 + account[-6:]
-        return mask_account
+        try:
+            mask_account = account[:6] + '*' * 6 + account[-6:]
+            return mask_account
+        except Exception as e:
+            return None
     
     def print_question(self):
         while True:
             try:
-                print(f"{Fore.WHITE + Style.BRIGHT}1. Run With Monosans Proxy{Style.RESET_ALL}")
+                print(f"{Fore.WHITE + Style.BRIGHT}1. Run With Proxyscrape Free Proxy{Style.RESET_ALL}")
                 print(f"{Fore.WHITE + Style.BRIGHT}2. Run With Private Proxy{Style.RESET_ALL}")
                 print(f"{Fore.WHITE + Style.BRIGHT}3. Run Without Proxy{Style.RESET_ALL}")
                 choose = int(input(f"{Fore.BLUE + Style.BRIGHT}Choose [1/2/3] -> {Style.RESET_ALL}").strip())
 
                 if choose in [1, 2, 3]:
                     proxy_type = (
-                        "Run With Monosans Proxy" if choose == 1 else 
-                        "Run With Private Proxy" if choose == 2 else 
-                        "Run Without Proxy"
+                        "With Proxyscrape Free" if choose == 1 else 
+                        "With Private" if choose == 2 else 
+                        "Without"
                     )
-                    print(f"{Fore.GREEN + Style.BRIGHT}{proxy_type} Selected.{Style.RESET_ALL}")
+                    print(f"{Fore.GREEN + Style.BRIGHT}Run {proxy_type} Proxy Selected.{Style.RESET_ALL}")
                     break
                 else:
                     print(f"{Fore.RED + Style.BRIGHT}Please enter either 1, 2 or 3.{Style.RESET_ALL}")
@@ -179,16 +184,6 @@ class Centic:
 
         return choose, rotate
     
-    async def check_connection(self, proxy=None):
-        connector = ProxyConnector.from_url(proxy) if proxy else None
-        try:
-            async with ClientSession(connector=connector, timeout=ClientTimeout(total=30)) as session:
-                async with session.get(url="https://centic.io", headers={}) as response:
-                    response.raise_for_status()
-                    return True
-        except (Exception, ClientResponseError) as e:
-            return None
-    
     async def user_login(self, account: str, address: str, proxy=None, retries=5):
         url = f"{self.BASE_API}/dev/v3/auth/login"
         data = json.dumps(self.generate_payload(account, address))
@@ -196,255 +191,214 @@ class Centic:
             **self.headers,
             "Content-Length": str(len(data)),
             "Content-Type": "application/json",
-            "X-Apikey": "dXoriON31OO1UopGakYO9f3tX2c4q3oO7mNsjB2nJsKnW406"
+            "X-Apikey": self.API_KEY
         }
         for attempt in range(retries):
             connector = ProxyConnector.from_url(proxy) if proxy else None
             try:
                 async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
-                    async with session.post(url=url, headers=headers, data=data) as response:
+                    async with session.post(url=url, headers=headers, data=data, ssl=False) as response:
                         response.raise_for_status()
-                        result = await response.json()
-                        return result["apiKey"]
+                        return await response.json()
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
                     continue
-                return None
+                return self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}Error     :{Style.RESET_ALL}"
+                    f"{Fore.RED+Style.BRIGHT} Login Failed {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
+                    f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+                )
         
-    async def user_confirm(self, apikey: str, proxy=None, retries=5):
+    async def user_confirm(self, address: str, proxy=None, retries=5):
         url = f"{self.BASE_API}/ctp-api/centic-points/invites"
         data = json.dumps({"referralCode":self.ref_code})
         headers = {
             **self.headers,
             "Content-Length": str(len(data)),
             "Content-Type": "application/json",
-            "X-Apikey": apikey
+            "X-Apikey": self.api_keys[address]
         }
+        await asyncio.sleep(3)
         for attempt in range(retries):
             connector = ProxyConnector.from_url(proxy) if proxy else None
             try:
                 async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
-                    async with session.post(url=url, headers=headers, data=data) as response:
+                    async with session.post(url=url, headers=headers, data=data, ssl=False) as response:
                         response.raise_for_status()
                         return await response.json()
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
                     continue
-                return None
+                return self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}Error     :{Style.RESET_ALL}"
+                    f"{Fore.RED+Style.BRIGHT} Confirm Invite Failed {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
+                    f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+                )
     
-    async def user_info(self, apikey: str, proxy=None, retries=5):
+    async def user_info(self, address: str, proxy=None, retries=5):
         url = f"{self.BASE_API}/ctp-api/centic-points/user-info"
         headers = {
             **self.headers,
             "Content-Type": "application/json",
-            "X-Apikey": apikey
+            "X-Apikey": self.api_keys[address]
         }
+        await asyncio.sleep(3)
         for attempt in range(retries):
             connector = ProxyConnector.from_url(proxy) if proxy else None
             try:
                 async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
-                    async with session.get(url=url, headers=headers) as response:
+                    async with session.get(url=url, headers=headers, ssl=False) as response:
                         response.raise_for_status()
                         return await response.json()
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
                     continue
-                return None
+                return self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}Error     :{Style.RESET_ALL}"
+                    f"{Fore.RED+Style.BRIGHT} GET CTP Points Failed {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
+                    f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+                )
                 
-    async def user_tasks(self, apikey: str, proxy=None, retries=5):
+    async def user_tasks(self, address: str, proxy=None, retries=5):
         url = f"{self.BASE_API}/ctp-api/centic-points/tasks"
         headers = {
             **self.headers,
             "Content-Type": "application/json",
-            "X-Apikey": apikey
+            "X-Apikey": self.api_keys[address]
         }
+        await asyncio.sleep(3)
         for attempt in range(retries):
             connector = ProxyConnector.from_url(proxy) if proxy else None
             try:
                 async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
-                    async with session.get(url=url, headers=headers) as response:
+                    async with session.get(url=url, headers=headers, ssl=False) as response:
                         response.raise_for_status()
                         return await response.json()
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
                     continue
-                return None
-                
-    async def claim_tasks(self, apikey: str, task_id: str, reward: int, proxy=None, retries=5):
+                return self.log(
+                    f"{Fore.CYAN+Style.BRIGHT}Error     :{Style.RESET_ALL}"
+                    f"{Fore.RED+Style.BRIGHT} GET Task Lists Failed {Style.RESET_ALL}"
+                    f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
+                    f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
+                )
+            
+    async def claim_tasks(self, address: str, task_id: str, title: str, reward: int, proxy=None, retries=5):
         url = f"{self.BASE_API}/ctp-api/centic-points/claim-tasks"
         data = json.dumps({"taskId":task_id, "point":reward})
         headers = {
             **self.headers,
             "Content-Length": str(len(data)),
             "Content-Type": "application/json",
-            "X-Apikey": apikey
+            "X-Apikey": self.api_keys[address]
         }
+        await asyncio.sleep(3)
         for attempt in range(retries):
             connector = ProxyConnector.from_url(proxy) if proxy else None
             try:
                 async with ClientSession(connector=connector, timeout=ClientTimeout(total=60)) as session:
-                    async with session.post(url=url, headers=headers, data=data) as response:
-                        if response.status == 400:
-                            return None
+                    async with session.post(url=url, headers=headers, data=data, ssl=False) as response:
                         response.raise_for_status()
                         return await response.json()
             except (Exception, ClientResponseError) as e:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
                     continue
-                return None
-            
-    async def process_check_connection(self, address: str, use_proxy: bool, rotate_proxy: bool):
-        message = "Checking Connection, Wait..."
-        if use_proxy:
-            message = "Checking Proxy Connection, Wait..."
-
-        print(
-            f"{Fore.CYAN + Style.BRIGHT}[ {datetime.now().astimezone(wib).strftime('%x %X %Z')} ]{Style.RESET_ALL}"
-            f"{Fore.WHITE + Style.BRIGHT} | {Style.RESET_ALL}"
-            f"{Fore.YELLOW + Style.BRIGHT}{message}{Style.RESET_ALL}",
-            end="\r",
-            flush=True
-        )
-
-        proxy = self.get_next_proxy_for_account(address) if use_proxy else None
-
-        if rotate_proxy:
-            is_valid = None
-            while is_valid is None:
-                is_valid = await self.check_connection(proxy)
-                if not is_valid:
-                    self.log(
-                        f"{Fore.CYAN+Style.BRIGHT}Proxy     :{Style.RESET_ALL}"
-                        f"{Fore.WHITE+Style.BRIGHT} {proxy} {Style.RESET_ALL}"
-                        f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
-                        f"{Fore.RED+Style.BRIGHT} Not 200 OK, {Style.RESET_ALL}"
-                        f"{Fore.YELLOW+Style.BRIGHT}Rotating Proxy...{Style.RESET_ALL}"
-                    )
-                    proxy = self.rotate_proxy_for_account(address) if use_proxy else None
-                    await asyncio.sleep(5)
-                    continue
-
-                self.log(
-                    f"{Fore.CYAN+Style.BRIGHT}Proxy     :{Style.RESET_ALL}"
-                    f"{Fore.WHITE+Style.BRIGHT} {proxy} {Style.RESET_ALL}"
-                    f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
-                    f"{Fore.GREEN+Style.BRIGHT} 200 OK {Style.RESET_ALL}                  "
+                return self.log(
+                    f"{Fore.MAGENTA + Style.BRIGHT}   >{Style.RESET_ALL}"
+                    f"{Fore.WHITE + Style.BRIGHT} {title} {Style.RESET_ALL}"
+                    f"{Fore.RED + Style.BRIGHT}Not Completed:{Style.RESET_ALL}"
+                    f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
                 )
-
-                return True
-
-        is_valid = await self.check_connection(proxy)
-        if not is_valid:
+    
+    async def process_user_login(self, account: str, address: str, use_proxy: bool, rotate_proxy: bool):
+        while True:
+            proxy = self.get_next_proxy_for_account(address) if use_proxy else None
             self.log(
                 f"{Fore.CYAN+Style.BRIGHT}Proxy     :{Style.RESET_ALL}"
                 f"{Fore.WHITE+Style.BRIGHT} {proxy} {Style.RESET_ALL}"
-                f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
-                f"{Fore.RED+Style.BRIGHT} Not 200 OK {Style.RESET_ALL}          "
             )
-            return False
-        
-        self.log(
-            f"{Fore.CYAN+Style.BRIGHT}Proxy     :{Style.RESET_ALL}"
-            f"{Fore.WHITE+Style.BRIGHT} {proxy} {Style.RESET_ALL}"
-            f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
-            f"{Fore.GREEN+Style.BRIGHT} 200 OK {Style.RESET_ALL}                  "
-        )
 
-        return True
-    
-    async def process_user_login(self, account: str, address: str, use_proxy: bool):
-        proxy = self.get_next_proxy_for_account(address) if use_proxy else None
+            login = await self.user_login(account, address, proxy)
+            if login:
+                self.api_keys[address] = login["apiKey"]
 
-        apikey = await self.user_login(account, address, proxy)
-        if not apikey:
-            self.log(
-                f"{Fore.CYAN + Style.BRIGHT}Status    :{Style.RESET_ALL}"
-                f"{Fore.RED + Style.BRIGHT} Login Failed {Style.RESET_ALL}"
-            )
-            return None
-
-        return apikey
-                
-    async def process_accounts(self, account: str, address: str, use_proxy: bool, rotate_proxy: bool):
-        is_valid = await self.process_check_connection(address, use_proxy, rotate_proxy)
-        if is_valid:
-            apikey = await self.process_user_login(account, address, use_proxy)
-            if apikey:
-                proxy = self.get_next_proxy_for_account(address) if use_proxy else None
                 self.log(
                     f"{Fore.CYAN + Style.BRIGHT}Status    :{Style.RESET_ALL}"
                     f"{Fore.GREEN + Style.BRIGHT} Login Success {Style.RESET_ALL}"
                 )
-            
-                await self.user_confirm(apikey, proxy)
+                return True
 
-                balance = "N/A"
-                user = await self.user_info(apikey, proxy)
-                if user:
-                    balance = user.get("totalPoint", 0)
-                    
+            if rotate_proxy:
+                proxy = self.rotate_proxy_for_account(address)
+                await asyncio.sleep(5)
+                continue
+
+            return False
+                
+    async def process_accounts(self, account: str, address: str, use_proxy: bool, rotate_proxy: bool):
+        logined = await self.process_user_login(account, address, use_proxy, rotate_proxy)
+        if logined:
+            proxy = self.get_next_proxy_for_account(address) if use_proxy else None
+        
+            await self.user_confirm(address, proxy)
+            await self.portofolio_campaigns(address, proxy)
+
+            user = await self.user_info(address, proxy)
+            if user:
+                balance = user.get("totalPoint", 0)
+                
                 self.log(
                     f"{Fore.CYAN + Style.BRIGHT}Balance   :{Style.RESET_ALL}"
                     f"{Fore.WHITE + Style.BRIGHT} {balance} CTP {Style.RESET_ALL}"
                 )
 
-                tasks = await self.user_tasks(apikey, proxy)
-                if not tasks:
-                    self.log(
-                        f"{Fore.CYAN + Style.BRIGHT}Task Lists:{Style.RESET_ALL}"
-                        f"{Fore.RED + Style.BRIGHT} Data Is None {Style.RESET_ALL}"
-                    )
-                    return
-                
-                self.log(
-                    f"{Fore.CYAN + Style.BRIGHT}Task Lists:{Style.RESET_ALL}"
-                )
-                
-                all_tasks = []
-                for key, value in tasks.items():
-                    if isinstance(value, list):
-                        all_tasks.extend(value)
-                    elif isinstance(value, dict):
-                        all_tasks.append(value)
+            tasks = await self.user_tasks(address, proxy)
+            if not tasks:
+                return
+            
+            self.log(f"{Fore.CYAN + Style.BRIGHT}Task Lists:{Style.RESET_ALL}")
+            
+            all_tasks = []
+            for key, value in tasks.items():
+                if isinstance(value, list):
+                    all_tasks.extend(value)
+                elif isinstance(value, dict):
+                    all_tasks.append(value)
 
-                for task in all_tasks:
-                    if task:
-                        task_id = task["_id"]
-                        title = task["name"]
-                        reward = task["point"]
-                        is_claimed = task.get("claimed", None)
+            for task in all_tasks:
+                if task:
+                    task_id = task["_id"]
+                    title = task["name"]
+                    reward = task["point"]
+                    is_claimed = task.get("claimed", None)
 
-                        if is_claimed:
-                            self.log(
-                                f"{Fore.CYAN + Style.BRIGHT}    ->{Style.RESET_ALL}"
-                                f"{Fore.WHITE + Style.BRIGHT} {title} {Style.RESET_ALL}"
-                                f"{Fore.YELLOW + Style.BRIGHT}Is Already Claimed{Style.RESET_ALL}"
-                            )
-                            continue
+                    if is_claimed:
+                        self.log(
+                            f"{Fore.MAGENTA + Style.BRIGHT}   >{Style.RESET_ALL}"
+                            f"{Fore.WHITE + Style.BRIGHT} {title} {Style.RESET_ALL}"
+                            f"{Fore.YELLOW + Style.BRIGHT}Already Completed{Style.RESET_ALL}"
+                        )
+                        continue
 
-                        claim = await self.claim_tasks(apikey, task_id, reward, proxy)
-                        if claim and claim.get("message") == "successfully":
-                            self.log(
-                                f"{Fore.CYAN + Style.BRIGHT}    ->{Style.RESET_ALL}"
-                                f"{Fore.WHITE + Style.BRIGHT} {title} {Style.RESET_ALL}"
-                                f"{Fore.GREEN + Style.BRIGHT}Is Claimed{Style.RESET_ALL}"
-                                f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
-                                f"{Fore.CYAN + Style.BRIGHT}Reward{Style.RESET_ALL}"
-                                f"{Fore.WHITE + Style.BRIGHT} {reward} CTP {Style.RESET_ALL}"
-                            )
-                        else:
-                            self.log(
-                                f"{Fore.CYAN + Style.BRIGHT}    ->{Style.RESET_ALL}"
-                                f"{Fore.WHITE + Style.BRIGHT} {title} {Style.RESET_ALL}"
-                                f"{Fore.RED + Style.BRIGHT}Isn't Claimed{Style.RESET_ALL}"
-                            )
-
-                        await asyncio.sleep(1)
+                    claim = await self.claim_tasks(address, task_id, title, reward, proxy)
+                    if claim and claim.get("message") == "successfully":
+                        self.log(
+                            f"{Fore.MAGENTA + Style.BRIGHT}   >{Style.RESET_ALL}"
+                            f"{Fore.WHITE + Style.BRIGHT} {title} {Style.RESET_ALL}"
+                            f"{Fore.GREEN + Style.BRIGHT}Completed Successfully{Style.RESET_ALL}"
+                            f"{Fore.MAGENTA + Style.BRIGHT} - {Style.RESET_ALL}"
+                            f"{Fore.CYAN + Style.BRIGHT}Reward:{Style.RESET_ALL}"
+                            f"{Fore.WHITE + Style.BRIGHT} {reward} CTP {Style.RESET_ALL}"
+                        )
 
     async def main(self):
         try:
@@ -477,7 +431,15 @@ class Centic:
                             f"{Fore.WHITE + Style.BRIGHT} {self.mask_account(address)} {Style.RESET_ALL}"
                             f"{Fore.CYAN + Style.BRIGHT}]{separator}{Style.RESET_ALL}"
                         )
-                        account = await self.process_accounts(account, address, use_proxy, rotate_proxy)
+
+                        if not address:
+                            self.log(
+                                f"{Fore.CYAN + Style.BRIGHT}Status    :{Style.RESET_ALL}"
+                                f"{Fore.RED + Style.BRIGHT} Invalid Private Key or Library Version Not Supported {Style.RESET_ALL}"
+                            )
+                            continue
+
+                        await self.process_accounts(account, address, use_proxy, rotate_proxy)
 
                 self.log(f"{Fore.CYAN + Style.BRIGHT}={Style.RESET_ALL}"*72)
                 

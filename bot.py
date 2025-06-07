@@ -350,7 +350,6 @@ class Centic:
             proxy = self.get_next_proxy_for_account(address) if use_proxy else None
         
             await self.user_confirm(address, proxy)
-            await self.portofolio_campaigns(address, proxy)
 
             user = await self.user_info(address, proxy)
             if user:

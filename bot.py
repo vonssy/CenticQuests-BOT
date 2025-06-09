@@ -204,12 +204,14 @@ class Centic:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
                     continue
-                return self.log(
+                self.log(
                     f"{Fore.CYAN+Style.BRIGHT}Error     :{Style.RESET_ALL}"
                     f"{Fore.RED+Style.BRIGHT} Login Failed {Style.RESET_ALL}"
                     f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
                     f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
                 )
+
+        return None
         
     async def user_confirm(self, address: str, proxy=None, retries=5):
         url = f"{self.BASE_API}/ctp-api/centic-points/invites"
@@ -232,12 +234,14 @@ class Centic:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
                     continue
-                return self.log(
+                self.log(
                     f"{Fore.CYAN+Style.BRIGHT}Error     :{Style.RESET_ALL}"
                     f"{Fore.RED+Style.BRIGHT} Confirm Invite Failed {Style.RESET_ALL}"
                     f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
                     f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
                 )
+
+        return None
     
     async def user_info(self, address: str, proxy=None, retries=5):
         url = f"{self.BASE_API}/ctp-api/centic-points/user-info"
@@ -258,12 +262,14 @@ class Centic:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
                     continue
-                return self.log(
+                self.log(
                     f"{Fore.CYAN+Style.BRIGHT}Error     :{Style.RESET_ALL}"
                     f"{Fore.RED+Style.BRIGHT} GET CTP Points Failed {Style.RESET_ALL}"
                     f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
                     f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
                 )
+
+        return None
                 
     async def user_tasks(self, address: str, proxy=None, retries=5):
         url = f"{self.BASE_API}/ctp-api/centic-points/tasks"
@@ -284,12 +290,14 @@ class Centic:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
                     continue
-                return self.log(
+                self.log(
                     f"{Fore.CYAN+Style.BRIGHT}Error     :{Style.RESET_ALL}"
                     f"{Fore.RED+Style.BRIGHT} GET Task Lists Failed {Style.RESET_ALL}"
                     f"{Fore.MAGENTA+Style.BRIGHT}-{Style.RESET_ALL}"
                     f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
                 )
+
+        return None
             
     async def claim_tasks(self, address: str, task_id: str, title: str, reward: int, proxy=None, retries=5):
         url = f"{self.BASE_API}/ctp-api/centic-points/claim-tasks"
@@ -312,12 +320,14 @@ class Centic:
                 if attempt < retries - 1:
                     await asyncio.sleep(5)
                     continue
-                return self.log(
+                self.log(
                     f"{Fore.MAGENTA + Style.BRIGHT}   >{Style.RESET_ALL}"
                     f"{Fore.WHITE + Style.BRIGHT} {title} {Style.RESET_ALL}"
                     f"{Fore.RED + Style.BRIGHT}Not Completed:{Style.RESET_ALL}"
                     f"{Fore.YELLOW+Style.BRIGHT} {str(e)} {Style.RESET_ALL}"
                 )
+
+        return None
     
     async def process_user_login(self, account: str, address: str, use_proxy: bool, rotate_proxy: bool):
         while True:
